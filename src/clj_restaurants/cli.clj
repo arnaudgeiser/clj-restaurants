@@ -151,10 +151,10 @@
         new-website (ask-input-for "Nouveau site web:")
         new-type-gastronomique (pick-restaurant-type (service/find-types-gastronomiques service))]
     (service/update-restaurant! service
-                                (merge restaurant {:restaurants/name new-name
-                                                   :restaurants/description new-description
-                                                   :restaurants/ste_web new-website
-                                                   :restaurants/type-gastronomique new-type-gastronomique}))
+                                (merge restaurant #:restaurants{:name new-name
+                                                                :description new-description
+                                                                :ste_web new-website
+                                                                :type-gastronomique new-type-gastronomique}))
     (println "Merci, le restaurant a bien été supprimé")))
 
 
