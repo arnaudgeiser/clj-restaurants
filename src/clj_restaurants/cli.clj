@@ -84,6 +84,25 @@
     (println "")
     (doseq [c commentaires] (show-commentaire c))))
 
+(defn add-city []
+  (let [code-postal (ask-input-for "Veuillez entrer le NPA de la nouvelle ville : ")
+        nom-ville (ask-input-for "Veuillez entrer le nom de la nouvelle ville : ")]
+    (service/insert-ville! service
+                           {:code-postal code-postal
+                            :nom-ville nom-ville})))
+
+(defn pick-city []
+  (let [cities (service/find-cities service)]
+    (println "Voici la liste des villes possibles, veuillez entrer le NPA de la ville désirée")
+    (doseq [{:villes/keys [code-postal nom-ville]} cities]
+      (println code-postal " " nom-ville))
+    (println "Entrez \"NEW\" pour créer une nouvelle ville")
+    (let [choice (read-line)]
+      (if (= "NEW" choice)
+        (add-city)
+        (if-let [city (first (filter #(includes? (:villes/code-postal %) choice) cities))]
+          city
+          (recur))))))
 
 (defmulti menu-restaurant-option (fn [option _] option))
 
@@ -138,25 +157,6 @@
                                                    :restaurants/type-gastronomique new-type-gastronomique}))
     (println "Merci, le restaurant a bien été supprimé")))
 
-(defn add-city []
-  (let [code-postal (ask-input-for "Veuillez entrer le NPA de la nouvelle ville : ")
-        nom-ville (ask-input-for "Veuillez entrer le nom de la nouvelle ville : ")]
-    (service/insert-ville! service
-                           {:code-postal code-postal
-                            :nom-ville nom-ville})))
-
-(defn pick-city []
-  (let [cities (service/find-cities service)]
-    (println "Voici la liste des villes possibles, veuillez entrer le NPA de la ville désirée")
-    (doseq [{:villes/keys [code-postal nom-ville]} cities]
-      (println code-postal " " nom-ville))
-    (println "Entrez \"NEW\" pour créer une nouvelle ville")
-    (let [choice (read-line)]
-      (if (= "NEW" choice)
-        (add-city)
-        (if-let [city (first (filter #(includes? (:villes/code-postal %) choice) cities))]
-          city
-          (recur))))))
 
 (defmethod menu-restaurant-option :5 [_ restaurant]
   (println "Edition de l'adresse du restaurant")
@@ -172,20 +172,6 @@
   (let [choice (read-line)]
     (when (.equalsIgnoreCase choice "o")
       (service/delete-restaurant! service numero))))
-
-(defn pick-restaurants [restaurants]
-  (display-restaurants restaurants)
-  (when (seq restaurants)
-    (let [rest-name (read-line)]
-      (loop []
-        (let [restaurant (service/find-restaurant service (get-restaurant-id rest-name restaurants))]
-          (show-restaurant restaurant)
-          (print-restaurant-menu)
-          (let [choice (choose)]
-            (when-not (= :0 choice)
-              (menu-restaurant-option choice restaurant)
-              (when-not (= :6 choice)
-                (recur)))))))))
 
 (defn pick-restaurant [restaurants]
   (display-restaurants restaurants)
