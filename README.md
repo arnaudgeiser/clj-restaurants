@@ -1,22 +1,26 @@
 # clj-restaurants
 
-A Clojure library designed to ... well, that part is up to you.
+This application is a demonstration of Clojure for the greatest Julien
+Plumez's restaurants application.
+Basically, it's a trivial business application to demonstrate how
+the Clojure ecosystem could solve the exact same problems with
+simple building blocks.
+
+From a Java perspective, here is what we use:
+| Building block        | Java    | Clojure    | Code |
+|-----------------------|:--------|:--------   |:-----|
+| Build tools           | Maven   | [Leiningen](https://leiningen.org/) | 
+| Dependency Injection  | Spring  | [component](https://github.com/stuartsierra/component)  | [system.clj](https://github.com/arnaudgeiser/clj-restaurants/blob/master/src/clj_restaurants/system.clj)|
+| Database libraries    | JPA     | [JDBC](https://github.com/seancorfield/next-jdbc), [SEQL](https://github.com/exoscale/seql) | [db.clj](https://github.com/arnaudgeiser/clj-restaurants/blob/master/src/clj_restaurants/db.clj)
+| Transaction           | Spring  | [JDBC](https://cljdoc.org/d/com.github.seancorfield/next.jdbc/1.1.643/doc/getting-started/transactions) | [service.clj](https://github.com/arnaudgeiser/clj-restaurants/blob/master/src/clj_restaurants/service.clj)
+| Database migrations   | Flyway  | [Ragtime](https://github.com/weavejester/ragtime) | [migrations.clj](https://github.com/arnaudgeiser/clj-restaurants/blob/master/src/clj_restaurants/migrations.clj)
+| Connection pools      | HikariCP | [HikariCP](https://github.com/arnaudgeiser/clj-restaurants/blob/master/src/clj_restaurants/datasource.clj)
+| Configuration files   | YAML     | [EDN](https://github.com/arnaudgeiser/clj-restaurants/blob/master/src/clj_restaurants/config.clj)
 
 ## Usage
 
-FIXME
+Install Leningen : https://leiningen.org/
 
-## License
-
-Copyright © 2021 FIXME
-
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
-
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+```shell
+lein run
+```

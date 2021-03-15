@@ -1,10 +1,13 @@
 (ns clj-restaurants.system
-  (:require [com.stuartsierra.component :as component]))
+  (:require [clj-restaurants.datasource :as datasource]
+            [clj-restaurants.migrations :as migrations]
+            [clj-restaurants.service :as service]
+            [clj-restaurants.cli :as cli]
+            [com.stuartsierra.component :refer [system-map using]]))
 
-(defn system []
-  (-> (component/system-map
-       :cli (CLI->map {})
-       :datasource (Datasource->map {})
-       ())
-      (component/system-using
-       {:cli [:datasource]})))
+(def system
+  (system-map
+   :datasource (datasource/map->Datasource {})
+   :migrations (using (migrations/map->Migrations {}) [:datasource])
+   :service (using (service/map->RestaurantService {}) [:datasource :migrations])
+   :cli (using (cli/map->CLI {}) [:service])))

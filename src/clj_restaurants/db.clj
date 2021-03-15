@@ -1,18 +1,8 @@
 (ns clj-restaurants.db
-  (:require [clj-restaurants.config :as config]
-            [clojure.java.jdbc :as jdbc]
-            [seql.helpers :refer [make-schema entity field ident has-one has-many transform inline-condition]]
-            [seql.core :refer [query]])
-  (:import [com.zaxxer.hikari HikariConfig HikariDataSource]))
-
-(def hikari-config
-  (doto (HikariConfig.)
-    (.setJdbcUrl (:jdbc-url config/config))))
-
-(def datasource
-  (HikariDataSource. hikari-config))
-
-(def db-spec {:datasource datasource})
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [seql.helpers :refer [make-schema entity field ident has-one has-many transform inline-condition]]
+   [seql.core :refer [query]]))
 
 (defn like [s] (str "%" s "%"))
 
@@ -105,53 +95,51 @@
                  :fk_type (:types-gastronomiques/numero type-gastronomique)}
                 ["numero = ?" numero]))
 
-(def env {:schema schema :jdbc datasource})
-
-(defn find-cities []
-  (query env
+(defn find-cities [datasource]
+  (query datasource
          :villes
          [:villes/numero
           :villes/code-postal
           :villes/nom-ville]))
 
-(defn find-evaluations-criteria []
-  (query env
+(defn find-evaluations-criteria [datasource]
+  (query datasource
          :criteres-evaluation
          [:criteres-evaluation/numero
           :criteres-evaluation/nom
           :criteres-evaluation/description]))
 
-(defn find-types-gastronomiques []
-  (query env
+(defn find-types-gastronomiques [datasource]
+  (query datasource
          :types-gastronomiques
          [:types-gastronomiques/numero
           :types-gastronomiques/libelle
           :types-gastronomiques/description]))
 
 (defn find-restaurants
-  ([] (find-restaurants []))
-  ([where] (query env
-                  :restaurants
-                  [:restaurants/numero
-                   :restaurants/nom
-                   :restaurants/adresse
-                   {:restaurants/ville [:villes/code-postal :villes/nom-ville]}
-                   {:restaurants/type-gastronomique [:types-gastronomiques/numero]}] where)))
+  ([datasource] (find-restaurants datasource []))
+  ([datasource where] (query datasource
+                             :restaurants
+                             [:restaurants/numero
+                              :restaurants/nom
+                              :restaurants/adresse
+                              {:restaurants/ville [:villes/code-postal :villes/nom-ville]}
+                              {:restaurants/type-gastronomique [:types-gastronomiques/numero]}] where)))
 
-(defn find-all-restaurants []
-  (find-restaurants))
+(defn find-all-restaurants [datasource]
+  (find-restaurants datasource))
 
-(defn find-restaurants-by-name [nom]
-  (find-restaurants [[:restaurants/nom-like nom]]))
+(defn find-restaurants-by-name [datasource nom]
+  (find-restaurants datasource [[:restaurants/nom-like nom]]))
 
-(defn find-restaurants-by-nom-ville [nom-ville]
-  (find-restaurants [[:restaurants/ville-like nom-ville]]))
+(defn find-restaurants-by-nom-ville [datasource nom-ville]
+  (find-restaurants datasource [[:restaurants/ville-like nom-ville]]))
 
-(defn find-restaurants-by-type-gastronomique [type]
-  (find-restaurants [[:restaurants/type-gastronomique-like type]]))
+(defn find-restaurants-by-type-gastronomique [datasource type]
+  (find-restaurants datasource [[:restaurants/type-gastronomique-like type]]))
 
-(defn find-restaurant [id]
-  (query env
+(defn find-restaurant [datasource id]
+  (query datasource
          [:restaurants/numero (int id)]
          [:restaurants/numero
           :restaurants/nom

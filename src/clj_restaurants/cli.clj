@@ -1,18 +1,28 @@
-(ns clj-restaurants.core
-  (:require [clj-restaurants.db :refer :all]
+(ns clj-restaurants.cli
+  (:require [clj-restaurants.service :as service]
+            [clj-restaurants.utils :refer [now
+                                           count-likes
+                                           count-dislikes
+                                           get-restaurant-id]]
             [clojure.string :refer [includes?]]
-            [ragtime.jdbc :as rag]
-            [ragtime.repl :as repl]
-            [clojure.java.jdbc :as jdbc])
+            [com.stuartsierra.component :as component])
   (:gen-class))
 
-(defn now [] (java.time.LocalDate/now))
+(declare service)
 
-(defn ip-address []
-  (->> (java.net.Inet4Address/getLocalHost)
-       (.getHostAddress)))
+(defn choose
+  "Choose a menu-option and convert it into a keyword"
+  [] (-> (read-line) (keyword)))
 
-(defn choose [] (-> (read-line) (keyword)))
+(defn read-int
+  "Read an int from stdin"
+  [] (Integer/parseInt (read-line)))
+
+(defn ask-input-for
+  "Ask a value with a specific message"
+  [msg]
+  (println msg)
+  (read-line))
 
 (defn print-main-menu []
   (println "======================================================")
@@ -47,16 +57,6 @@
       (println "Veuillez saisir le nom exact du restaurant dont vous voulez voir le détail, ou appuyez sur Enter pour revenir en arrière"))
     (println "Aucun restaurant n'a été trouvé")))
 
-(defn count-likes [likes]
-  (->> likes
-       (filter :likes/appreciation)
-       count))
-
-(defn count-dislikes [likes]
-  (->> likes
-       (filter (complement :likes/appreciation))
-       count))
-
 (defn show-note [{:notes/keys [note critere-evaluation] :as n}]
   (let [{critere :criteres-evaluation/nom} critere-evaluation]
     (when critere-evaluation
@@ -84,58 +84,33 @@
     (println "")
     (doseq [c commentaires] (show-commentaire c))))
 
-(defn get-restaurant-id [name restaurants]
-  (->> restaurants
-       (filter #(includes? {:restaurants/nom %} name))
-       first
-       :restaurants/numero))
-
-(defn read-int [] (Integer/parseInt (read-line)))
-
-(defn ask-input-for [msg]
-  (println msg)
-  (let [r (read-line)]
-    (flush)
-    r))
 
 (defmulti menu-restaurant-option (fn [option _] option))
 
 (defmethod menu-restaurant-option :default [& _])
 
 (defmethod menu-restaurant-option :1 [_ {fk-rest :restaurants/numero}]
-  (jdbc/with-db-transaction [tx db-spec]
-    (jdbc/insert! tx :likes {:appreciation "T"
-                             :date_eval (now)
-                             :adresse_ip (ip-address)
-                             :fk_rest fk-rest})))
+  (service/insert-like! service fk-rest))
 
 (defmethod menu-restaurant-option :2 [_ {fk-rest :restaurants/numero}]
-  (jdbc/with-db-transaction [tx db-spec]
-    (jdbc/insert! tx :likes {:appreciation "F"
-                             :date_eval (now)
-                             :adresse_ip (ip-address)
-                             :fk_rest fk-rest})))
+  (service/insert-dislike! service fk-rest))
 
 (defmethod menu-restaurant-option :3 [_ {fk-rest :restaurants/numero}]
   (println "Merci d'évaluer ce restaurant !")
   (let [username (ask-input-for "Quel est votre nom d'utilisateur ?")
         comment (ask-input-for "Quel commentaire aimeriez-vous publier ?")]
     (println "Veuillez s'il vous plait donner une notre entre 1 et 5 pour chacun des critères :")
-    (let [criteria (find-evaluations-criteria)
+    (let [criteria (service/find-evaluations-criteria service)
           notes (mapv (fn [{:criteres-evaluation/keys [numero nom description]}]
                         (println (str nom " : " description))
                         (let [note (read-int)]
                           {:note note :fk-crit numero}))
-                      criteria)]
-      (jdbc/with-db-transaction [tx db-spec]
-        (let [{fk-comm :numero} (insert-commentaire! tx {:date-eval (now)
-                                                         :commentaire comment
-                                                         :nom-utilisateur username
-                                                         :fk-rest fk-rest})]
-          (doseq [{:keys [note fk-crit]} notes]
-            (insert-note! tx {:note note
-                              :fk-comm fk-comm
-                              :fk-crit fk-crit})))))))
+                      criteria)
+          evaluation {:date-eval (now)
+                      :commentaire comment
+                      :nom-utilisateur username
+                      :fk-rest fk-rest}]
+      (service/insert-complete-evaluation! service {:evaluation evaluation :notes notes}))))
 
 (defn display-types [types]
   (->> types
@@ -155,25 +130,23 @@
   (let [new-name (ask-input-for "Nouveau nom :")
         new-description (ask-input-for "Nouvelle description: ")
         new-website (ask-input-for "Nouveau site web:")
-        new-type-gastronomique (pick-restaurant-type (find-types-gastronomiques))]
-    (jdbc/with-db-connection [tx db-spec]
-      (update-restaurant! tx
-                          (merge restaurant {:restaurants/name new-name
-                                             :restaurants/description new-description
-                                             :restaurants/ste_web new-website
-                                             :restaurants/type-gastronomique new-type-gastronomique})))
+        new-type-gastronomique (pick-restaurant-type (service/find-types-gastronomiques service))]
+    (service/update-restaurant! service
+                                (merge restaurant {:restaurants/name new-name
+                                                   :restaurants/description new-description
+                                                   :restaurants/ste_web new-website
+                                                   :restaurants/type-gastronomique new-type-gastronomique}))
     (println "Merci, le restaurant a bien été supprimé")))
 
 (defn add-city []
   (let [code-postal (ask-input-for "Veuillez entrer le NPA de la nouvelle ville : ")
         nom-ville (ask-input-for "Veuillez entrer le nom de la nouvelle ville : ")]
-    (jdbc/with-db-connection [tx db-spec]
-      (insert-ville! tx
-                     {:code-postal code-postal
-                      :nom-ville nom-ville}))))
+    (service/insert-ville! service
+                           {:code-postal code-postal
+                            :nom-ville nom-ville})))
 
 (defn pick-city []
-  (let [cities (find-cities)]
+  (let [cities (service/find-cities service)]
     (println "Voici la liste des villes possibles, veuillez entrer le NPA de la ville désirée")
     (doseq [{:villes/keys [code-postal nom-ville]} cities]
       (println code-postal " " nom-ville))
@@ -189,79 +162,70 @@
   (println "Edition de l'adresse du restaurant")
   (let [new-address (ask-input-for "Nouvelle rue: ")
         city (pick-city)]
-    (jdbc/with-db-connection [tx db-spec]
-      (jdbc/update! tx
-                    :restaurants
-                    {:adresse new-address
-                     :fk_vill (:villes/numero city)}
-                    ["numero=?" (:restaurants/numero restaurant)]))))
+    (service/update-restaurant-address! service
+                                        {:numero (:restaurants/numero restaurant)
+                                         :adresse new-address
+                                         :fk_vill (:villes/numero city)})))
 
 (defmethod menu-restaurant-option :6 [_ {:restaurants/keys [numero]}]
   (println "Etes-vous sûr de vouloir supprimer ce restaurant ? (O/n)")
   (let [choice (read-line)]
     (when (.equalsIgnoreCase choice "o")
-      (jdbc/with-db-connection [tx db-spec]
-        (jdbc/delete! tx :notes ["numero in (select(n.numero)
-                                   from notes n
-                                   join commentaires c
-                                   on n.fk_comm=c.numero
-                                   where c.fk_rest=?)" numero])
-        (jdbc/delete! tx :commentaires ["fk_rest=?" numero])
-        (jdbc/delete! tx :likes ["fk_rest=?" numero])
-        (jdbc/delete! tx :restaurants ["numero=?" numero])))))
+      (service/delete-restaurant! service numero))))
 
 (defn pick-restaurants [restaurants]
   (display-restaurants restaurants)
-  (if (seq restaurants)
+  (when (seq restaurants)
     (let [rest-name (read-line)]
-      (loop [choice nil]
-        (let [restaurant (find-restaurant (get-restaurant-id rest-name restaurants))]
+      (loop []
+        (let [restaurant (service/find-restaurant service (get-restaurant-id rest-name restaurants))]
           (show-restaurant restaurant)
           (print-restaurant-menu)
           (let [choice (choose)]
             (when-not (= :0 choice)
               (menu-restaurant-option choice restaurant)
               (when-not (= :6 choice)
-                (recur choice)))))))))
+                (recur)))))))))
 
 (defn pick-restaurant [restaurants]
   (display-restaurants restaurants)
-  (if (seq restaurants)
+  (when (seq restaurants)
     (let [rest-name (read-line)]
-      (loop [choice nil]
-        (let [restaurant (find-restaurant (get-restaurant-id rest-name restaurants))]
-          (show-restaurant restaurant)
-          (print-restaurant-menu)
-          (let [choice (choose)]
-            (when-not (= :0 choice)
-              (menu-restaurant-option choice restaurant)
-              (when-not (= :6 choice)
-                (recur choice)))))))))
+      (loop []
+        (let [restaurant (service/find-restaurant service (get-restaurant-id rest-name restaurants))]
+          (when restaurant
+            (show-restaurant restaurant)
+            (print-restaurant-menu)
+            (let [choice (choose)]
+              (when-not (= :0 choice)
+                (menu-restaurant-option choice restaurant)
+                (when-not (= :6 choice)
+                  (recur))))))))))
 
 (defmulti menu-option identity)
 
 (defmethod menu-option :default [_])
 
 (defmethod menu-option :1 [_]
-  (let [restaurants (find-all-restaurants)]
+  (let [restaurants (service/find-all-restaurants service)]
     (pick-restaurant restaurants)))
 
 (defmethod menu-option :2 [_]
   (println "Veuillez entrer une partie du nom recherché : ")
   (let [name (read-line)
-        restaurants (find-restaurants-by-name name)]
+        restaurants (service/find-restaurants-by-name service name)]
     (pick-restaurant restaurants)))
 
 (defmethod menu-option :3 [_]
   (println "Veuillez entrer une partie du nom de la ville désirée : ")
   (let [name (read-line)
-        restaurants (find-restaurants-by-nom-ville name)]
+        restaurants (service/find-restaurants-by-nom-ville service name)]
     (pick-restaurant restaurants)))
 
 (defmethod menu-option :4 [_]
   (println "Veuillez entrer une partie du type de restaurant recherché : ")
   (let [type (read-line)
-        restaurants (find-restaurants-by-type-gastronomique type)]
+        restaurants (service/find-restaurants-by-type-gastronomique service type)]
     (pick-restaurant restaurants)))
 
 (defmethod menu-option :5 [_]
@@ -271,30 +235,24 @@
         site-web (ask-input-for "Veuillez entrer l'adresse de son site internet : ")
         adresse (ask-input-for "Rue :")
         city (pick-city)
-        type-gastronomique (pick-restaurant-type (find-types-gastronomiques))]
-    (jdbc/with-db-connection [tx db-spec]
-      (jdbc/insert! tx
-                    :restaurants
-                    {:nom name
-                     :description description
-                     :site_web site-web
-                     :adresse adresse
-                     :fk_vill (:villes/numero city)
-                     :fk_type (:types-gastronomiques/numero type-gastronomique)}))))
+        type-gastronomique (pick-restaurant-type (service/find-types-gastronomiques service))]
+    (service/insert-restaurant! service
+                                {:nom name
+                                 :description description
+                                 :site_web site-web
+                                 :adresse adresse
+                                 :fk_vill (:villes/numero city)
+                                 :fk_type (:types-gastronomiques/numero type-gastronomique)})))
 
 (defmethod menu-option :default [_])
 
-(defn -main
-  [& args]
-
-  (repl/migrate {:datastore (rag/sql-database db-spec)
-                 :migrations (rag/load-resources "migrations")})
-  (loop [choice nil]
-    (when-not (= :0 choice)
-      (print-main-menu)
-      (let [choice (choose)]
-        (menu-option choice)
-        (recur choice)))))
-
-(comment
-  (-main))
+(defrecord CLI [service]
+  component/Lifecycle
+  (start [this]
+    (def service service)
+    (loop [choice nil]
+      (when-not (= :0 choice)
+        (print-main-menu)
+        (let [choice (choose)]
+          (menu-option choice)
+          (recur choice))))))
