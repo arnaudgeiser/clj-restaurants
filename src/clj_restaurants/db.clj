@@ -77,15 +77,6 @@
        :numero
        (assoc {} :villes/numero)))
 
-(defn insert-restaurant! [tx {:keys [nom adresse description nom-utilisateur fk-rest]}]
-  (jdbc/insert! tx
-                :restaurants
-                {:nom nom
-                 :adresse adresse
-                 :description description
-                 :nom_utilisateur nom-utilisateur
-                 :fk_rest fk-rest}))
-
 (defn update-restaurant! [tx {:restaurants/keys [numero name description site_web type-gastronomique]}]
   (jdbc/update! tx
                 :restaurants
