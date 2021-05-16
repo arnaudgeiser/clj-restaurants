@@ -15,7 +15,7 @@ From a Java perspective, here is what we use:
 | Transaction           | Spring  | [JDBC](https://cljdoc.org/d/com.github.seancorfield/next.jdbc/1.1.643/doc/getting-started/transactions) | [service.clj](https://github.com/arnaudgeiser/clj-restaurants/blob/master/src/clj_restaurants/service.clj)
 | Database migrations   | Flyway  | [Ragtime](https://github.com/weavejester/ragtime) | [migrations.clj](https://github.com/arnaudgeiser/clj-restaurants/blob/master/src/clj_restaurants/migrations.clj)
 | Connection pools      | HikariCP | HikariCP | [datasource.clj](https://github.com/arnaudgeiser/clj-restaurants/blob/master/src/clj_restaurants/datasource.clj)
-| Configuration files   | YAML     | EDN | [config.edn](https://github.com/arnaudgeiser/clj-restaurants/blob/master/resrouces/config.edn)
+| Configuration files   | YAML     | EDN | [config.edn](https://github.com/arnaudgeiser/clj-restaurants/blob/master/resources/config.edn)
 
 ## Usage
 
