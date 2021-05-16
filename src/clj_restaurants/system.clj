@@ -5,9 +5,9 @@
             [clj-restaurants.cli :as cli]
             [com.stuartsierra.component :refer [system-map using]]))
 
-(def system
+(defn build-system [{{:keys[creds migrations]} :db}]
   (system-map
-   :datasource (datasource/map->Datasource {})
-   :migrations (using (migrations/map->Migrations {}) [:datasource])
+   :datasource (datasource/map->Datasource {:config creds})
+   :migrations (using (migrations/map->Migrations {:config migrations}) [:datasource])
    :service (using (service/map->RestaurantService {}) [:datasource :migrations])
    :cli (using (cli/map->CLI {}) [:service])))

@@ -9,5 +9,6 @@
                  [com.stuartsierra/component "1.0.0"]
                  [com.h2database/h2 "1.4.200"]
                  [com.zaxxer/HikariCP "4.0.2"]]
+  :aot :all
   :main clj-restaurants.main
   :repl-options {:init-ns clj-restaurants.main})

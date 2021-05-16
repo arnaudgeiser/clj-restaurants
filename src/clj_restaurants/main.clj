@@ -1,9 +1,19 @@
 (ns clj-restaurants.main
-  (:require [clj-restaurants.system :as system]))
+  (:require [clojure.java.io :as io]
+            [clojure.edn :refer [read-string]]
+            [clj-restaurants.system :as system])
+  (:gen-class))
+
+(defn read-config []
+  (->> (io/resource "config.edn")
+       slurp
+       read-string))
 
 (defn -main
   [& _]
-  (.start system/system))
+  (let [config (read-config)]
+    (.start (system/build-system config))))
 
 (comment
   (-main))
+

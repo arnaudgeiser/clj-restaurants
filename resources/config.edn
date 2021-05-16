@@ -1,0 +1,5 @@
+{:db
+ {:creds {:jdbc-url "jdbc:h2:mem:test_mem"
+          :user "sa"
+          :password "password"}
+  :migrations "migrations"}}
