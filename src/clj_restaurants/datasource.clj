@@ -1,6 +1,6 @@
 (ns clj-restaurants.datasource
   (:require [com.stuartsierra.component :as component]
-            [clj-restaurants.db :as db])
+            [clj-restaurants.db         :as db])
   (:import [com.zaxxer.hikari HikariConfig HikariDataSource]))
 
 (defn hikari-config [config]
