@@ -3,32 +3,30 @@
             [com.stuartsierra.component :as component]
             [compojure.core :refer [routes GET]]
             [ring.adapter.jetty :refer [run-jetty]]
-            [clj-restaurants.service :as service]))
+
+            [clj-restaurants.coerce  :refer [->int]]
+            [clj-restaurants.service :as service]
+            [clj-restaurants.utils :refer [count-dislikes count-likes]]))
 
 (defn make-handler [service]
   (routes
-   (GET "/" [] "<h1>What23ever!<h1>")
    (GET "/cities" [] (write-str (service/find-cities service)))
+   (GET "/restaurants/:id" [id] (write-str
+                                 (as-> (service/find-restaurant service (->int id)) r
+                                   (assoc r :restaurants/dislikes (count-dislikes (:restaurants/likes r)))
+                                   (assoc r :restaurants/likes (count-likes (:restaurants/likes r))))))
    (GET "/restaurants" [] (write-str (service/find-all-restaurants service)))))
 
-(defrecord Server [service]
+(defrecord Server [config
+                   service] ;; dependency
+
   component/Lifecycle
   (start [this]
-    (prn "restart 26:")
     (assoc this :server (run-jetty (#'make-handler service)
                                    {:join? false
-                                    :port 3000})))
+                                    :port (get config :port 3000)})))
   (stop [this]
     (let [{:keys [server]} this]
       (when server
         (.stop (:server this))))
     this))
-
-(defn token []
-  (let [chars-between #(map char (range (int %1) (inc (int %2))))
-        chars (concat (chars-between \0 \9)
-                      (chars-between \A \Z))
-        password (take 8 (repeatedly #(rand-nth chars)))]
-    (reduce str password)))
-
-(repeately token)

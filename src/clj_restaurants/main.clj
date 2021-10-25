@@ -17,3 +17,8 @@
 (comment
   (-main))
 
+
+(comment
+  (use 'com.stuartsierra.component)
+  (def system (start (system/build-server (read-config))))
+  (stop system))

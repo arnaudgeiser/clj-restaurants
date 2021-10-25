@@ -8,11 +8,13 @@
        (.getHostAddress)))
 
 (defn count-likes [likes]
+  (prn likes)
   (->> likes
        (filter :likes/appreciation)
        count))
 
 (defn count-dislikes [likes]
+  (prn "dislikes:" likes)
   (->> likes
        (filter (complement :likes/appreciation))
        count))

@@ -130,6 +130,7 @@
   (find-restaurants datasource [[:restaurants/type-gastronomique-like type]]))
 
 (defn find-restaurant [datasource id]
+  (prn id)
   (query datasource
          [:restaurants/numero (int id)]
          [:restaurants/numero

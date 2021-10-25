@@ -1,13 +1,13 @@
 (ns clj-restaurants.dev
   (:require [reloaded.repl :refer [reset-all go]]
-            [clj-restaurants.system :refer [build-system]]))
+            [clj-restaurants.system :refer [build-server]]))
 
 (comment
   (reset-all)
   (go)
   (reloaded.repl/clear)
   (let [config (clj-restaurants.main/read-config)]
-    (reloaded.repl/set-init! (partial #'build-system config)))
+    (reloaded.repl/set-init! (partial #'build-server config)))
 
-  (build-system {})
+  (build-server {})
   (reloaded.repl/initializer))
